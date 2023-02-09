@@ -1,39 +1,54 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# phomemo
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+A Flutter plugin to create information to send to phomemo printers.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+To get started with phomemo add the package to your pubspec.yaml file.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+The nRF devices have different softdevices, be sure to select the correct softdevice from the enum list sofDeviceReqType. If a key file is not provided a default key will be used. DO NOT US THIS KEY IN YOUR FINAL PACKAGE. 
 
+A DFU package is able to consist of standalone firmware options e.g.(application, sofdevice, or bootloader) or combined options e.g.(application+softdevice+bootloader, application+sofdevice, or softdevice+bootloader). It is not able to make a application+bootloader. 
+
+### Generate a text image
+Generates an image to send to the printer to print. Set the size as the size of the label. The example below has a height of 12mm with a infinately long length.
 ```dart
-const like = 'sample';
+PhomemoHelper helper = PhomemoHelper();
+img.Image? text = await helper.generateImage(
+  TextSpan(
+    text: 'text here',
+    style: const TextStyle(
+      fontSize: 34,
+      color: Colors.black
+    ),
+  ),
+  size: Size(double.inifity,12),
+);
 ```
 
-## Additional information
+### Send info to the printer
+Generates an archived package as a Uint8List.
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Key generation is able to provide a private key in pem form, but the public key is able to be in either pem or code e.g.(c) form. To change the public key export type to pem add publicKeyType: SigningKeyType.pem.
+```dart
+Phomemo label = Phomemo(send: bluetooth.write, read: bluetooth.read);
+PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.name);
+
+await label.printLabel(
+  [img.decodePng(qrCode!.buffer.asUint8List()),letter],// the images to send to the printer
+  printer: printer, //The printer that will be printed on
+  spacing: 5, //space between images. Only works for D30, and D35 printers
+  rotate: true, //rotate the image that is printing
+  labelSize: Size(double.infinity,12), //size of the label
+);
+```
+
+## Contributing
+
+Feel free to propose changes by creating a pull request.
+
+## Additional Information
+
+This plugin is only for creating the information to send to phomemo printers. This has been tested on P12Pro, D35, D30 and M220.
