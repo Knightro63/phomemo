@@ -6,12 +6,6 @@ A Flutter plugin to create information to send to phomemo printers.
 
 To get started with phomemo add the package to your pubspec.yaml file.
 
-## Usage
-
-The nRF devices have different softdevices, be sure to select the correct softdevice from the enum list sofDeviceReqType. If a key file is not provided a default key will be used. DO NOT US THIS KEY IN YOUR FINAL PACKAGE. 
-
-A DFU package is able to consist of standalone firmware options e.g.(application, sofdevice, or bootloader) or combined options e.g.(application+softdevice+bootloader, application+sofdevice, or softdevice+bootloader). It is not able to make a application+bootloader. 
-
 ### Generate a text image
 Generates an image to send to the printer to print. Set the size as the size of the label. The example below has a height of 12mm with a infinately long length.
 ```dart
