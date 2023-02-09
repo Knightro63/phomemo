@@ -23,9 +23,8 @@ img.Image? text = await helper.generateImage(
 ```
 
 ### Send info to the printer
-Generates an archived package as a Uint8List.
+Generate the data to send to the printer. Put the function to send to your printer in the class itself. In this case it is sending to a ble printer usng flutter_blue.
 
-Key generation is able to provide a private key in pem form, but the public key is able to be in either pem or code e.g.(c) form. To change the public key export type to pem add publicKeyType: SigningKeyType.pem.
 ```dart
 Phomemo label = Phomemo(send: bluetooth.write, read: bluetooth.read);
 PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.name);
