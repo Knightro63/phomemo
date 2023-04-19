@@ -12,16 +12,24 @@ import 'package:image/image.dart' as img;
 enum PhomemoPrinter { P12Pro, D30, D35, M220 }
 
 class Phomemo {
-  Phomemo({required this.send, required this.read});
+  Phomemo({
+    required this.send, 
+    required this.read,
+    this.packetSize = 256
+  });
 
   Future<void> Function(List<int>) send;
   Future<List<int>> Function() read;
+  int packetSize;
 
-  Future<void> printLabel(List<img.Image?> src,
-      {required PhomemoPrinter printer,
+  Future<void> printLabel(
+    List<img.Image?> src,
+    {required PhomemoPrinter printer,
       Size labelSize = const Size(12, double.infinity),
       int? spacing,
-      bool rotate = true}) async {
+      bool rotate = true
+    }
+  ) async {
     List<int> bits = [];
     for (int i = 0; i < src.length; i++) {
       if (src[i] != null) {
@@ -32,13 +40,13 @@ class Phomemo {
       }
     }
     if (bits.isEmpty) return;
-    int chunck = 256;
     await header(labelSize.width.toInt(), bits.length ~/ labelSize.width);
-    for (int i = 0; i < bits.length / chunck; i++) {
-      if (i * chunck + chunck < bits.length) {
-        await send(bits.sublist(i * chunck, i * chunck + chunck));
-      } else {
-        await send(bits.sublist(i * chunck, bits.length));
+    for (int i = 0; i < bits.length / packetSize; i++) {
+      if (i * packetSize + packetSize < bits.length) {
+        await send(bits.sublist(i * packetSize, i * packetSize + packetSize));
+      } 
+      else {
+        await send(bits.sublist(i * packetSize, bits.length));
       }
     }
     int end = PhomemoPrinter.P12Pro == printer ? 0x0E : 0x00;
