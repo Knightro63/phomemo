@@ -189,7 +189,7 @@ class PhomemoHelper {
     int newWidth = (labelSize.width * 8).toInt();
     if (rotate) {
       resized = img.copyResize(resized, height: newWidth);
-      resized = img.copyRotate(resized, 90);
+      resized = img.copyRotate(resized, angle: 90);
     } else {
       resized = img.copyResize(resized, width: newWidth);
     }
@@ -208,7 +208,7 @@ class PhomemoHelper {
 
     // R/G/B channels are same -> keep only one channel
     final List<int> oneChannelBytes = [];
-    final List<int> buffer = image.getBytes(format: img.Format.rgba);
+    final List<int> buffer = image.getBytes();//image.getBytes(format: img.Format.rgba);
     for (int i = 0; i < buffer.length; i += 4) {
       oneChannelBytes.add(buffer[i]);
     }
