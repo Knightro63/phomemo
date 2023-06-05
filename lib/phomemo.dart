@@ -199,12 +199,13 @@ class PhomemoHelper {
 
   /// Image rasterization
   List<int> _toRasterFormat(img.Image imgSrc) {
-    final img.Image image = img.Image.from(imgSrc); // make a copy
+    img.Image image = img.Image.from(imgSrc); // make a copy
     final int widthPx = image.width;
     final int heightPx = image.height;
 
     img.grayscale(image);
     img.invert(image);
+    image = image.convert(format:img.Format.uint8,numChannels: 4);
 
     // R/G/B channels are same -> keep only one channel
     final List<int> oneChannelBytes = [];
