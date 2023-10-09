@@ -1,7 +1,7 @@
 name: phomemo
-description: A new Flutter package project.
-version: 0.0.4+4
-homepage:
+description: A Flutter plugin to create information to send to phomemo printers.
+version: 0.0.1
+homepage: https://github.com/Knightro63/phomemo
 
 environment:
   sdk: '>=2.18.6 <4.0.0'

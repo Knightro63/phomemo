@@ -1,15 +1,12 @@
 library phomemo;
 
-import 'dart:typed_data';
 import 'dart:ui';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as m;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:image/image.dart' as img;
 
-enum PhomemoPrinter { P12Pro, D30, D35, M220 }
+enum PhomemoPrinter { p12pro, d30, d35, m220 }
 
 class Phomemo {
   Phomemo({
@@ -34,7 +31,7 @@ class Phomemo {
     for (int i = 0; i < src.length; i++) {
       if (src[i] != null) {
         bits += PhomemoHelper().preprocessImage(src[i]!, rotate, labelSize);
-        if (spacing != null && PhomemoPrinter.M220 != printer) {
+        if (spacing != null && PhomemoPrinter.m220 != printer) {
           bits += List.filled(spacing * labelSize.width.toInt(), 0x00);
         }
       }
@@ -49,7 +46,7 @@ class Phomemo {
         await send(bits.sublist(i * packetSize, bits.length));
       }
     }
-    int end = PhomemoPrinter.P12Pro == printer ? 0x0E : 0x00;
+    int end = PhomemoPrinter.p12pro == printer ? 0x0E : 0x00;
     await send([0x1b, 0x64, end]);
   }
 
@@ -77,7 +74,7 @@ class PhomemoHelper {
         return PhomemoPrinter.values[i];
       }
     }
-    return PhomemoPrinter.M220;
+    return PhomemoPrinter.m220;
   }
 
   Future<img.Image?> generateNameTag(

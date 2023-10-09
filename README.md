@@ -1,4 +1,8 @@
 # phomemo
+[![Pub Version](https://img.shields.io/pub/v/phomemo)](https://pub.dev/packages/phomemo)
+[![analysis](https://github.com/Knightro63/phomemo/actions/workflows/flutter.yml/badge.svg)](https://github.com/Knightro63/phomemo/actions/)
+[![Star on Github](https://img.shields.io/github/stars/Knightro63/phomemo.svg?style=flat&logo=github&colorB=deeppink&label=stars)](https://github.com/Knightro63/phomemo)
+[![License: BSD](https://img.shields.io/badge/license-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 
 A Flutter plugin to create information to send to phomemo printers.
 
@@ -37,10 +41,16 @@ await label.printLabel(
   labelSize: Size(double.infinity,12), //size of the label
 );
 ```
+## Example
+
+Find the example app [here](https://github.com/Knightro63/phomemo/tree/main/example).
 
 ## Contributing
 
-Feel free to propose changes by creating a pull request.
+Contributions are welcome.
+In case of any problems look at [existing issues](https://github.com/Knightro63/phomemo/issues), if you cannot find anything related to your problem then open an issue.
+Create an issue before opening a [pull request](https://github.com/Knightro63/phomemo/pulls) for non trivial fixes.
+In case of trivial fixes open a [pull request](https://github.com/Knightro63/phomemo/pulls) directly.
 
 ## Additional Information
 
