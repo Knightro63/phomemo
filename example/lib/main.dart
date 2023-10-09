@@ -1,4 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'bluetooth.dart';
+import 'package:phomemo/phomemo.dart';
+import 'package:image/image.dart' as img;
 
 void main() {
   runApp(const MyApp());
@@ -32,6 +36,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool printing = false;
   String search = '';
+  TextEditingController textController = TextEditingController();
 
   @override
   void initState() {
@@ -46,8 +51,34 @@ class _MyHomePageState extends State<MyHomePage> {
     bluetooth.destroy();
     super.dispose();
   }
+  void _bleUpdate(BluetoothOptions options) {
+    //setState(() {
+      bleOptions = options;
+    //});
+    switch (options) {
+      case BluetoothOptions.DISCONNECTED:
+          setState(() {
 
-  Future<void> printPhomemo({Uint8List? qrcode,String? name, Size? size})async{// = const Size(double.infinity,12)
+          });
+        break;
+      case BluetoothOptions.CONNECTED:
+        setState(() {
+
+        });
+        break;
+      case BluetoothOptions.DATA_RECEIVED:
+        setState(() {
+
+        });
+        break;
+      default:
+        setState((){
+
+        });
+        break;
+    }
+  }
+  Future<void> printPhomemo({Uint8List? image,String? name, Size? size})async{// = const Size(double.infinity,12)
     size ??= const Size(double.infinity,12);
     if(printing) return;
     printing = true;
@@ -55,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
     PhomemoHelper helper = PhomemoHelper();
     PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.name);
     
-    if(printer == PhomemoPrinter.D35 && size.width == double.infinity){
+    if(printer == PhomemoPrinter.d35 && size.width == double.infinity){
       size = Size(25,size.height);
     }
 
@@ -70,7 +101,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       size: size*8,
     ):null;
-    img.Image? qr = qrcode != null?img.decodePng(qrcode):null;
+    img.Image? qr = image != null?img.decodePng(image):null;
     await label.printLabel(
       [qr,letter],// 
       printer: printer,
@@ -91,19 +122,42 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
-              'You have pushed the button this many times:',
+              'Type below the text you wish to print.',
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            Container(
+              margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+              width: 320,
+              height: 35,
+              alignment: Alignment.center,
+              child: TextField(
+                keyboardType: TextInputType.multiline,
+                maxLines: 1,
+                autofocus: false,
+                controller: textController,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  contentPadding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0.0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(10),
+                    ),
+                    borderSide: BorderSide(
+                        width: 0, 
+                        style: BorderStyle.none,
+                    ),
+                  ),
+                  hintText: 'Text'
+                ),
+              )
+            )
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        onPressed: (){printPhomemo(name: textController.text);},
+        tooltip: 'Print',
+        child: const Icon(Icons.print),
       ),
     );
   }

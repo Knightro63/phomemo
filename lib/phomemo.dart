@@ -6,19 +6,37 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:image/image.dart' as img;
 
+/// Phomemo printes that have been tested and are supported
 enum PhomemoPrinter { p12pro, d30, d35, m220 }
 
+/// [packetSize] the max size of the information you wish to send to the printer 
+/// 256 is the largest value. Other values are 8,16,32,128
+/// 
+/// [send] is the function from the ble package you are using to send the information
+/// 
+/// [read] is the function that gets info from the printer
 class Phomemo {
   Phomemo({
     required this.send, 
-    required this.read,
+    this.read,
     this.packetSize = 256
   });
 
   Future<void> Function(List<int>) send;
-  Future<List<int>> Function() read;
+  Future<List<int>> Function()? read;
   int packetSize;
 
+  /// sends the packts to the label maker
+  /// 
+  /// [src] is the image that is being sent
+  /// 
+  /// [printer] is the type of printer being used
+  /// 
+  /// [labelSize] is the size of the label.
+  /// 
+  /// [spacing] is the spacing inbetween labels if printing more than one
+  /// 
+  /// [rotate] use this if the label is printing left to right. Otherwise it is printing top to bottom
   Future<void> printLabel(
     List<img.Image?> src,
     {required PhomemoPrinter printer,
@@ -50,6 +68,7 @@ class Phomemo {
     await send([0x1b, 0x64, end]);
   }
 
+  /// The start information for the printer
   Future<void> header(int width, int bytes) async {
     List<int> start = [
       0x1b,
@@ -67,7 +86,10 @@ class Phomemo {
   }
 }
 
+/// This is a helper to create lables from text or images
 class PhomemoHelper {
+
+  /// If the name is a String convert to [PhomemoPrinter] enum.
   PhomemoPrinter getPrinterFromName(String name) {
     for (int i = 0; i < PhomemoPrinter.values.length; i++) {
       if (name.toLowerCase() == PhomemoPrinter.values[i].name.toLowerCase()) {
@@ -77,12 +99,20 @@ class PhomemoHelper {
     return PhomemoPrinter.m220;
   }
 
+  /// If using the m220 and wish to have a name tag created.
+  /// 
+  /// [text] is the text in the center of the nametag
+  /// 
+  /// [size] is the size of the nametag
+  /// 
+  /// [padding] is the padding around the nametag
+  /// 
+  /// [logoPath] is the path of the logo you wish to put onto the nametag
   Future<img.Image?> generateNameTag(
     m.TextSpan text, {
     required Size size,
     int padding = 0,
-    bool withLogo = false,
-    required String logoPath,
+    String? logoPath,
   }) async {
     m.TextPainter textPainter = m.TextPainter(
         text: text,
@@ -96,18 +126,20 @@ class PhomemoHelper {
     Canvas newCanvas = Canvas(recorder);
     newCanvas.drawColor(m.Colors.white, m.BlendMode.color);
 
-    ByteData bd = await rootBundle.load(logoPath);
-    Codec codec = await instantiateImageCodecFromBuffer(
-      await ImmutableBuffer.fromUint8List(Uint8List.view(bd.buffer)),
-    );
+    if(logoPath != null){
+      ByteData bd = await rootBundle.load(logoPath);
+      Codec codec = await instantiateImageCodecFromBuffer(
+        await ImmutableBuffer.fromUint8List(Uint8List.view(bd.buffer)),
+      );
 
-    Image codecImage = (await codec.getNextFrame()).image;
+      Image codecImage = (await codec.getNextFrame()).image;
 
-    Paint paint = Paint();
-    paint.color = m.Colors.black;
+      Paint paint = Paint();
+      paint.color = m.Colors.black;
 
-    ImagePainter imagePainter = ImagePainter(image: codecImage, painter: paint);
-    imagePainter.paint(newCanvas, size);
+      ImagePainter imagePainter = ImagePainter(image: codecImage, painter: paint);
+      imagePainter.paint(newCanvas, size);
+    }
 
     textPainter.paint(
       newCanvas,
@@ -129,11 +161,11 @@ class PhomemoHelper {
     return null;
   }
 
+  /// Generate Image from Text in the corrected lable size format.
   Future<img.Image?> generateImage(
     m.TextSpan text, {
     required Size size,
-    int padding = 0,
-    bool withLogo = false,
+    int padding = 0
   }) async {
     m.TextPainter textPainter = m.TextPainter(
         text: text,
@@ -181,6 +213,7 @@ class PhomemoHelper {
     return null;
   }
 
+  /// Process the image to a readable format for the printer
   List<int> preprocessImage(img.Image src, bool rotate, Size labelSize) {
     img.Image resized = src;
     int newWidth = (labelSize.width * 8).toInt();
