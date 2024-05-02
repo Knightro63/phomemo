@@ -13,6 +13,14 @@
 *.ipr
 *.iws
 .idea/
+.metadata
+
+*.iml
+*.lock
+macos/
+android/
+ios/
+temp/
 
 # Visual Studio Code related
 .classpath

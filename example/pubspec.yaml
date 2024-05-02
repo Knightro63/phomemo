@@ -9,7 +9,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  flutter_blue: ^0.8.0
+  flutter_blue_plus: ^1.32.4
+  permission_handler: ^11.3.1
   phomemo: 
     path: ../
 
@@ -17,6 +18,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+
+dependency_overrides:
+  permission_handler_apple:
+    path: ../../../GitHub/permission_handler_apple/
 
 flutter:
   uses-material-design: true

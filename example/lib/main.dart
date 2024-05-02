@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'bluetooth.dart';
 import 'package:phomemo/phomemo.dart';
 import 'package:image/image.dart' as img;
@@ -34,6 +36,8 @@ class _MyHomePageState extends State<MyHomePage> {
   late Bluetooth bluetooth;
   BluetoothOptions? bleOptions;
 
+  bool isConnected = false;
+
   bool printing = false;
   String search = '';
   TextEditingController textController = TextEditingController();
@@ -48,7 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   @override
   void dispose() {
-    bluetooth.destroy();
+    bluetooth.dispose();
     super.dispose();
   }
   void _bleUpdate(BluetoothOptions options) {
@@ -56,17 +60,17 @@ class _MyHomePageState extends State<MyHomePage> {
       bleOptions = options;
     //});
     switch (options) {
-      case BluetoothOptions.DISCONNECTED:
+      case BluetoothOptions.disconnected:
           setState(() {
 
           });
         break;
-      case BluetoothOptions.CONNECTED:
+      case BluetoothOptions.connected:
         setState(() {
 
         });
         break;
-      case BluetoothOptions.DATA_RECEIVED:
+      case BluetoothOptions.dataReceived:
         setState(() {
 
         });
@@ -82,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
     size ??= const Size(double.infinity,12);
     if(printing) return;
     printing = true;
-    Phomemo label = Phomemo(send: bluetooth.write, read: bluetooth.read);
+    Phomemo label = Phomemo(send: bluetooth.write, read: bluetooth.read, packetSize: 128);
     PhomemoHelper helper = PhomemoHelper();
     PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.name);
     
@@ -121,15 +125,15 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'Type below the text you wish to print.',
+            Text(
+              bluetooth.deviceConnected()?'Type below the text you wish to print.':'Press floating action button to connect to a phomemo printer.',
             ),
             Container(
               margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
               width: 320,
               height: 35,
               alignment: Alignment.center,
-              child: TextField(
+              child: bluetooth.deviceConnected()?TextField(
                 keyboardType: TextInputType.multiline,
                 maxLines: 1,
                 autofocus: false,
@@ -149,15 +153,30 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   hintText: 'Text'
                 ),
-              )
+              ):Container()
             )
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: (){printPhomemo(name: textController.text);},
-        tooltip: 'Print',
-        child: const Icon(Icons.print),
+        onPressed: () async{
+          if(bluetooth.deviceConnected()){
+            printPhomemo(name: textController.text);
+          }
+          else if(!bluetooth.isScanning && bluetooth.device == null){
+            if(
+              ((Platform.isMacOS || Platform.isIOS) && await Permission.bluetooth.request().isGranted) 
+              || (Platform.isAndroid && await Permission.bluetoothScan.request().isGranted && await Permission.bluetoothConnect.request().isGranted)
+            ){
+              bluetooth.startScan();
+            }
+          }
+          else if(bluetooth.isScanning && bluetooth.device == null){
+            bluetooth.stopScan();
+          }
+        },
+        tooltip: bluetooth.deviceConnected()?'Print':'Search',
+        child: Icon(bluetooth.deviceConnected()?Icons.print:((!bluetooth.isScanning && bluetooth.device == null)?Icons.bluetooth_disabled_rounded:Icons.bluetooth_audio)),
       ),
     );
   }
