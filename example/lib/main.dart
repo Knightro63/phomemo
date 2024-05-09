@@ -82,13 +82,13 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
     }
   }
-  Future<void> printPhomemo({Uint8List? image,String? name, Size? size})async{// = const Size(double.infinity,12)
+  Future<void> printPhomemo({Uint8List? image,String? name, Size? size})async{
     size ??= const Size(double.infinity,12);
     if(printing) return;
     printing = true;
-    Phomemo label = Phomemo(send: bluetooth.write, read: bluetooth.read, packetSize: 128);
+    Phomemo label = Phomemo(send: bluetooth.write);
     PhomemoHelper helper = PhomemoHelper();
-    PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.name);
+    PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.platformName);
     
     if(printer == PhomemoPrinter.d35 && size.width == double.infinity){
       size = Size(25,size.height);

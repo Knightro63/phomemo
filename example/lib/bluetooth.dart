@@ -46,7 +46,8 @@ class Bluetooth {
   bool hasServices = false;
   bool get isScanning => subscription != null;
   Timer? timer;
-
+  StreamSubscription? stream;
+  bool isStreaming = false;
   StreamSubscription<List<ScanResult>>? subscription;
 
   bool deviceConnected() {
@@ -115,9 +116,11 @@ class Bluetooth {
       FlutterBluePlus.cancelWhenScanComplete(subscription!);
       FlutterBluePlus.startScan(
         timeout: d,
-        androidUsesFineLocation: true,
+        //androidUsesFineLocation: true,
         withNames: names ?? [],
-        withServices: guid
+        withServices: guid,
+        continuousUpdates: true,
+        androidScanMode: AndroidScanMode.balanced,
       );
 
       timer = Timer(d, stopScan);
@@ -125,6 +128,7 @@ class Bluetooth {
   }
   void stopScan([String type = '']) {
     timer?.cancel();
+    stream?.cancel();
     timer = null;
     print('STOPSCAN:$type');
     subscription?.cancel();
@@ -172,33 +176,45 @@ class Bluetooth {
     });
   }
   void dispose(){
+    stream?.cancel();
+    timer?.cancel();
     stopScan();
     disconnect();
   }
-  void getBleData() {
-    _readCharacteristic();
+
+  Future<void> setNotification() async {
+    for(final char in characteristic!){
+      if (char.properties.notify) {
+        if (!isStreaming) {
+          stream = char.lastValueStream.listen((value) {
+            print(value);
+          });
+          isStreaming = true;
+        }
+        else if(isStreaming){
+          stream?.cancel();
+          isStreaming = false;
+        }
+      }
+    }
   }
-  void _readCharacteristic() async{
-    List<int> value = await read();
-  }
-  
   Future<List<int>> read() async{
     BluetoothCharacteristic? toSend; 
-    characteristic!.forEach((char) {
-      if (char.properties.notify) {
+    for(final char in characteristic!){
+      if (char.properties.read) {
         toSend = char;
       }
-    });
+    }
     return await toSend!.read();
   }
   Future<void> write(List<int> data) async{
     BluetoothCharacteristic? toSend; 
-    characteristic!.forEach((char) {
-      //print(char.properties);
+    for(final char in characteristic!){
+      
       if (char.properties.write) {
         toSend = char;
       }
-    });
+    }
     await toSend?.write(data);
   }
 }

@@ -18,12 +18,10 @@ enum PhomemoPrinter { p12pro, d30, d35, m220 }
 class Phomemo {
   Phomemo({
     required this.send, 
-    this.read,
-    this.packetSize = 256
+    this.packetSize = 128
   });
 
   Future<void> Function(List<int>) send;
-  Future<List<int>> Function()? read;
   int packetSize;
 
   /// sends the packts to the label maker
