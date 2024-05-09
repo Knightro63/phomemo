@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'bluetooth.dart';
 import 'package:phomemo/phomemo.dart';
@@ -41,6 +43,9 @@ class _MyHomePageState extends State<MyHomePage> {
   bool printing = false;
   String search = '';
   TextEditingController textController = TextEditingController();
+  List<TextEditingController> sizeController = [TextEditingController(),TextEditingController()];
+  Size labelSize = const Size(double.infinity,12);
+  Uint8List? image;
 
   @override
   void initState() {
@@ -82,21 +87,30 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
     }
   }
-  Future<void> printPhomemo({Uint8List? image,String? name, Size? size})async{
+  Future<void> printPhomemo({Uint8List? image,String? name,Size? size})async{
     size ??= const Size(double.infinity,12);
     if(printing) return;
     printing = true;
     Phomemo label = Phomemo(send: bluetooth.write);
     PhomemoHelper helper = PhomemoHelper();
     PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.platformName);
-    
-    if(printer == PhomemoPrinter.d35 && size.width == double.infinity){
-      size = Size(25,size.height);
-    }
 
-    img.Image? letter = name != null?await helper.generateImage(
+    img.Image? letter = await textToImage(name,size);
+
+    img.Image? qr = image != null?img.decodePng(image):null;
+    await label.printLabel(
+      [qr,letter],
+      printer: printer,
+      spacing: 5,
+    ).then((value){
+      printing = false;
+    });
+  }
+
+  Future<img.Image?> textToImage(String? text,Size size) async{
+    img.Image? letter = text != null?await PhomemoHelper().generateImage(
       TextSpan(
-        text: name,//labelController.text, 
+        text: text,
         style: const TextStyle(
           fontFamily: 'MuseoSans',
           fontSize: 34,
@@ -105,14 +119,8 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       size: size*8,
     ):null;
-    img.Image? qr = image != null?img.decodePng(image):null;
-    await label.printLabel(
-      [qr,letter],// 
-      printer: printer,
-      spacing: 5,
-    ).then((value){
-      printing = false;
-    });
+
+    return letter;
   }
 
   @override
@@ -133,11 +141,20 @@ class _MyHomePageState extends State<MyHomePage> {
               width: 320,
               height: 35,
               alignment: Alignment.center,
-              child: bluetooth.deviceConnected()?TextField(
+              child: TextField(
                 keyboardType: TextInputType.multiline,
                 maxLines: 1,
                 autofocus: false,
                 controller: textController,
+                onChanged: (t)async {
+                  image = img.encodePng((await textToImage(
+                    textController.text,
+                    labelSize
+                  ))!);
+                  setState(() {
+                    
+                  });
+                },
                 decoration: const InputDecoration(
                   isDense: true,
                   filled: true,
@@ -153,7 +170,103 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   hintText: 'Text'
                 ),
-              ):Container()
+              )
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Tape Size: ',
+                ),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                  width: 80,
+                  height: 35,
+                  alignment: Alignment.center,
+                  child: TextField(
+                    keyboardType: TextInputType.number,
+                    inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly
+                    ],
+                    maxLines: 1,
+                    autofocus: false,
+                    controller: sizeController[0],
+                    onChanged: (t){
+                      labelSize = Size(sizeController[0].text != ''?double.parse(sizeController[0].text):double.infinity, sizeController[1].text != ''?double.parse(sizeController[1].text):12);
+                      setState(() {
+                        
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      contentPadding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(10),
+                        ),
+                        borderSide: BorderSide(
+                            width: 0, 
+                            style: BorderStyle.none,
+                        ),
+                      ),
+                      hintText: 'width'
+                    ),
+                  )
+                ),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                  width: 80,
+                  height: 35,
+                  alignment: Alignment.center,
+                  child: TextField(
+                    keyboardType: TextInputType.number,
+                    inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly
+                    ],
+                    maxLines: 1,
+                    autofocus: false,
+                    controller: sizeController[1],
+                    onChanged: (t){
+                      labelSize = Size(sizeController[0].text != ''?double.parse(sizeController[0].text):double.infinity, sizeController[1].text != ''?double.parse(sizeController[1].text):12);
+                      setState(() {
+                        
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      contentPadding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(10),
+                        ),
+                        borderSide: BorderSide(
+                            width: 0, 
+                            style: BorderStyle.none,
+                        ),
+                      ),
+                      hintText: 'height'
+                    ),
+                  )
+                ),
+              ],
+            ),
+            Container(
+              width: (labelSize.width * 3)+30,
+              height: (labelSize.height * 3)+30,
+              padding: const EdgeInsets.fromLTRB(15, 15, 15, 15),
+              color: Theme.of(context).focusColor,
+              child: Container(
+                width: (labelSize.width * 3),
+                height: (labelSize.height * 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  image: image == null?null:DecorationImage(image: MemoryImage(image!))
+                ),
+                alignment: Alignment.centerLeft,
+              ),
             )
           ],
         ),
@@ -161,7 +274,11 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async{
           if(bluetooth.deviceConnected()){
-            printPhomemo(name: textController.text);
+            labelSize = Size(sizeController[0].text != ''?double.parse(sizeController[0].text):double.infinity, sizeController[1].text != ''?double.parse(sizeController[1].text):12);
+            printPhomemo(
+              name: textController.text,
+              size: labelSize
+            );
           }
           else if(!bluetooth.isScanning && bluetooth.device == null){
             if(
