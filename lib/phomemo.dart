@@ -2,6 +2,7 @@ library phomemo;
 
 import 'dart:ui';
 import 'package:flutter/material.dart' as m;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:image/image.dart' as img;
@@ -86,9 +87,26 @@ class Phomemo {
 
 /// This is a helper to create lables from text or images
 class PhomemoHelper {
+  /// to capture widget to image by GlobalKey in RenderRepaintBoundary
+  static Future<img.Image?> generateImageFromWidget(GlobalKey containerKey) async {
+    try {
+      /// boundary widget by GlobalKey
+      RenderRepaintBoundary? boundary = containerKey.currentContext?.findRenderObject() as RenderRepaintBoundary?; 
+
+      /// convert boundary to image
+      final image = await boundary!.toImage(pixelRatio: 6);
+
+      /// set ImageByteFormat
+      final data = await image.toByteData(format: ImageByteFormat.png);
+      return _byteDataToImage(data);
+
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   /// If the name is a String convert to [PhomemoPrinter] enum.
-  PhomemoPrinter getPrinterFromName(String name) {
+  static PhomemoPrinter getPrinterFromName(String name) {
     for (int i = 0; i < PhomemoPrinter.values.length; i++) {
       if (name.toLowerCase() == PhomemoPrinter.values[i].name.toLowerCase()) {
         return PhomemoPrinter.values[i];
@@ -106,7 +124,7 @@ class PhomemoHelper {
   /// [padding] is the padding around the nametag
   /// 
   /// [logoPath] is the path of the logo you wish to put onto the nametag
-  Future<img.Image?> generateNameTag(
+  static Future<img.Image?> generateNameTag(
     m.TextSpan text, {
     required Size size,
     int padding = 0,
@@ -148,19 +166,14 @@ class PhomemoHelper {
     );
 
     final Picture picture = recorder.endRecording();
-    var res = await picture.toImage(size.width.floor(), size.height.floor());
+    final res = await picture.toImage(size.width.floor(), size.height.floor());
+    final data = await res.toByteData(format: ImageByteFormat.png);
 
-    ByteData? data = await res.toByteData(format: ImageByteFormat.png);
-
-    if (data != null) {
-      return img.decodePng(Uint8List.view(data.buffer));
-    }
-
-    return null;
+    return _byteDataToImage(data);
   }
 
   /// Generate Image from Text in the corrected lable size format.
-  Future<img.Image?> generateImage(
+  static Future<img.Image?> generateImageFromText(
     m.TextSpan text, {
     required Size size,
     int padding = 0
@@ -195,21 +208,19 @@ class PhomemoHelper {
     );
 
     final Picture picture = recorder.endRecording();
-    var res = await picture.toImage(
+    final res = await picture.toImage(
         size.width == double.infinity
             ? (textPainter.width).toInt() + padding
             : size.width.toInt() + padding,
         size.height == double.infinity
             ? ((textPainter.width + padding) * ratio).toInt()
             : size.height.toInt());
-    ByteData? data = await res.toByteData(format: ImageByteFormat.png);
+    final data = await res.toByteData(format: ImageByteFormat.png);
 
-    if (data != null) {
-      return img.decodePng(Uint8List.view(data.buffer));
-    }
-
-    return null;
+    return _byteDataToImage(data);
   }
+
+
 
   /// Process the image to a readable format for the printer
   List<int> preprocessImage(img.Image src, bool rotate, Size labelSize) {
@@ -225,8 +236,16 @@ class PhomemoHelper {
     return _toRasterFormat(resized);
   }
 
+  static img.Image? _byteDataToImage(ByteData? data){
+    if (data != null) {
+      return img.decodePng(Uint8List.view(data.buffer));
+    }
+
+    return null;
+  }
+
   /// Image rasterization
-  List<int> _toRasterFormat(img.Image imgSrc) {
+  static List<int> _toRasterFormat(img.Image imgSrc) {
     img.Image image = img.Image.from(imgSrc); // make a copy
     final int widthPx = image.width;
     final int heightPx = image.height;
@@ -258,7 +277,7 @@ class PhomemoHelper {
   }
 
   /// Merges each 8 values (bits) into one byte
-  List<int> _packBitsIntoBytes(List<int> bytes) {
+  static List<int> _packBitsIntoBytes(List<int> bytes) {
     const pxPerLine = 8;
     final List<int> res = <int>[];
     const threshold = 127; // set the greyscale -> b/w threshold here
@@ -277,7 +296,7 @@ class PhomemoHelper {
   }
 
   /// Replaces a single bit in a 32-bit unsigned integer.
-  int _transformUint32Bool(int uint32, int shift, bool newValue) {
+  static int _transformUint32Bool(int uint32, int shift, bool newValue) {
     return ((0xFFFFFFFF ^ (0x1 << shift)) & uint32) |
         ((newValue ? 1 : 0) << shift);
   }

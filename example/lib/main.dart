@@ -35,6 +35,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  GlobalKey key = GlobalKey();
   late Bluetooth bluetooth;
   BluetoothOptions? bleOptions;
 
@@ -51,11 +52,13 @@ class _MyHomePageState extends State<MyHomePage> {
   PhomemoPrinter printer = PhomemoPrinter.p12pro;
   List<bool> fixedLabel = [false,true];
 
+  String showType = 'Example';
+
   @override
   void initState() {
     bluetooth = Bluetooth(
       onUpdate: _bleUpdate,
-      names: ['P12Pro','D35','D30']
+      names: ['P12Pro','D35','D30','Q--------------'] /// 'Q--------------' Place the name of the m220 here. This is displayed on the front of the printer.
     );
 
     for(final printer in PhomemoPrinter.values){
@@ -106,23 +109,28 @@ class _MyHomePageState extends State<MyHomePage> {
     if(printing) return;
     printing = true;
     Phomemo label = Phomemo(send: bluetooth.write);
-    PhomemoHelper helper = PhomemoHelper();
-    PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.platformName);
+    PhomemoPrinter printer = PhomemoHelper.getPrinterFromName(bluetooth.device!.platformName);
+    img.Image? letter;
+    if(showType == 'Custom'){
+      letter = await textToImage(name,size);
+    }
+    else{
+      letter = await PhomemoHelper.generateImageFromWidget(key);
+    }
 
-    img.Image? letter = await textToImage(name,size);
-
-    img.Image? qr = image != null?img.decodePng(image):null;
     await label.printLabel(
-      [qr,letter],
+      [letter],
       printer: printer,
       spacing: 5,
+      labelSize: labelSize,
+      rotate: printer != PhomemoPrinter.m220 // do not rotate the image if using the m220 or m110
     ).then((value){
       printing = false;
     });
   }
 
   Future<img.Image?> textToImage(String? text,Size size) async{
-    img.Image? letter = text != null?await PhomemoHelper().generateImage(
+    img.Image? letter = text != null?await PhomemoHelper.generateImageFromText(
       TextSpan(
         text: text,
         style: const TextStyle(
@@ -135,6 +143,76 @@ class _MyHomePageState extends State<MyHomePage> {
     ):null;
 
     return letter;
+  }
+
+  Widget getWidget(){
+    late Widget child;
+    switch (printer) {
+      case PhomemoPrinter.d35:
+      case PhomemoPrinter.d30:
+      case PhomemoPrinter.p12pro:
+        child =  Container(
+          width: (labelSize.width * 3),
+          height: (labelSize.height * 3),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              const Icon(Icons.add_photo_alternate_outlined),
+              labelSize.width == double.infinity?const Text('This is an Example of the printer printing!'):labelSize.width > 35?const Text('Example!'):const Text('Ex!')
+            ],
+          ),
+        );
+        break;
+      default:
+        child = Container(
+          width: (labelSize.width * 3),
+          height: (labelSize.height * 3),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: Colors.black,width: 2)
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.add_photo_alternate_outlined),
+                SizedBox(
+                  height: 20,
+                ),
+                Text(
+                  'This is an Example of the printer printing!',
+                  textAlign: TextAlign.center,
+                )
+              ],
+            ),
+          ),
+        );
+    }
+
+    return Container(
+      width: (labelSize.width * 3)+30,
+      height: (labelSize.height * 3)+30,
+      margin: const EdgeInsets.only(top:5),
+      padding: const EdgeInsets.fromLTRB(15, 15, 15, 15),
+      color: Theme.of(context).focusColor,
+      child: RepaintBoundary(
+        key: key,
+        child: child,
+      )
+    );
   }
 
   @override
@@ -150,52 +228,95 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(
               bluetooth.deviceConnected()?'Type below the text you wish to print.':'Press floating action button to connect to a phomemo printer.',
             ),
-            Container(
-              width: 120,
-              height:35,
-              padding: const EdgeInsets.only(left: 7.5,right: 7.5),
-              decoration: BoxDecoration(
-                color: Colors.purple[50],
-                borderRadius: const BorderRadius.all(Radius.circular(10)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton <dynamic>(
-                  isExpanded: true,
-                  items: items,
-                  value: printer,
-                  isDense: true,
-                  onChanged: (d){
-                    setState(() {
-                      printer = d;
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 120,
+                  height:35,
+                  padding: const EdgeInsets.only(left: 7.5,right: 7.5),
+                  margin: const EdgeInsets.only(right: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.purple[50],
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton <dynamic>(
+                      isExpanded: true,
+                      items: items,
+                      value: printer,
+                      isDense: true,
+                      onChanged: (d){
+                        setState(() {
+                          printer = d;
 
-                      switch (printer) {
-                        case PhomemoPrinter.d30:
-                          labelSize = const Size(40, 12);
-                          fixedLabel = [true,true];
-                          break;
-                        case PhomemoPrinter.d35:
-                          labelSize = const Size(25, 12);
-                          fixedLabel = [false,true];
-                          break;
-                        case PhomemoPrinter.p12pro:
-                          labelSize = const Size(double.infinity, 12);
-                          fixedLabel = [false,true];
-                          break;
-                        case PhomemoPrinter.m220:
-                          labelSize = const Size(50, 80);
-                          fixedLabel = [false,false];
-                          break;
-                        default:
-                      }
+                          switch (printer) {
+                            case PhomemoPrinter.d30:
+                              labelSize = const Size(40, 12);
+                              fixedLabel = [true,true];
+                              break;
+                            case PhomemoPrinter.d35:
+                              labelSize = const Size(25, 12);
+                              fixedLabel = [false,true];
+                              break;
+                            case PhomemoPrinter.p12pro:
+                              labelSize = const Size(double.infinity, 12);
+                              fixedLabel = [false,true];
+                              break;
+                            case PhomemoPrinter.m220:
+                              labelSize = const Size(50, 80);
+                              fixedLabel = [false,false];
+                              break;
+                            default:
+                          }
 
-                      sizeController[0].text = labelSize.width.toString();
-                      sizeController[1].text = labelSize.height.toString();
-                    });
-                  },
+                          sizeController[0].text = labelSize.width.toString();
+                          sizeController[1].text = labelSize.height.toString();
+                        });
+                      },
+                    ),
+                  ),
                 ),
-              ),
+                Container(
+                  width: 120,
+                  height:35,
+                  padding: const EdgeInsets.only(left: 7.5,right: 7.5),
+                  decoration: BoxDecoration(
+                    color: Colors.purple[50],
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton <String>(
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Example',
+                          child: Text(
+                            'Example', 
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        ),
+                        DropdownMenuItem(
+                          value: 'Custom',
+                          child: Text(
+                            'Custom', 
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        )
+                      ],
+                      value: showType,
+                      isDense: true,
+                      onChanged: (d){
+                        setState(() {
+                          showType = d!;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Container(
+            showType == 'Custom'?Container(
               margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
               width: 320,
               height: 35,
@@ -230,7 +351,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   hintText: 'Text'
                 ),
               )
-            ),
+            ):getWidget(),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -313,7 +434,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            Container(
+            if(showType == 'Custom')Container(
               width: (labelSize.width * 3)+30,
               height: (labelSize.height * 3)+30,
               padding: const EdgeInsets.fromLTRB(15, 15, 15, 15),
