@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Phomemo Demo'),
     );
   }
 }
@@ -43,9 +43,13 @@ class _MyHomePageState extends State<MyHomePage> {
   bool printing = false;
   String search = '';
   TextEditingController textController = TextEditingController();
-  List<TextEditingController> sizeController = [TextEditingController(),TextEditingController()];
+  List<TextEditingController> sizeController = [TextEditingController(text: double.infinity.toString()),TextEditingController(text: '12.0')];
   Size labelSize = const Size(double.infinity,12);
   Uint8List? image;
+
+  List<DropdownMenuItem<dynamic>> items = [];
+  PhomemoPrinter printer = PhomemoPrinter.p12pro;
+  List<bool> fixedLabel = [false,true];
 
   @override
   void initState() {
@@ -53,6 +57,16 @@ class _MyHomePageState extends State<MyHomePage> {
       onUpdate: _bleUpdate,
       names: ['P12Pro','D35','D30']
     );
+
+    for(final printer in PhomemoPrinter.values){
+      items.add(DropdownMenuItem(
+        value: printer,
+        child: Text(
+          printer.name, 
+          overflow: TextOverflow.ellipsis,
+        )
+      ));
+    }
     super.initState();
   }
   @override
@@ -137,6 +151,51 @@ class _MyHomePageState extends State<MyHomePage> {
               bluetooth.deviceConnected()?'Type below the text you wish to print.':'Press floating action button to connect to a phomemo printer.',
             ),
             Container(
+              width: 120,
+              height:35,
+              padding: const EdgeInsets.only(left: 7.5,right: 7.5),
+              decoration: BoxDecoration(
+                color: Colors.purple[50],
+                borderRadius: const BorderRadius.all(Radius.circular(10)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton <dynamic>(
+                  isExpanded: true,
+                  items: items,
+                  value: printer,
+                  isDense: true,
+                  onChanged: (d){
+                    setState(() {
+                      printer = d;
+
+                      switch (printer) {
+                        case PhomemoPrinter.d30:
+                          labelSize = const Size(40, 12);
+                          fixedLabel = [true,true];
+                          break;
+                        case PhomemoPrinter.d35:
+                          labelSize = const Size(25, 12);
+                          fixedLabel = [false,true];
+                          break;
+                        case PhomemoPrinter.p12pro:
+                          labelSize = const Size(double.infinity, 12);
+                          fixedLabel = [false,true];
+                          break;
+                        case PhomemoPrinter.m220:
+                          labelSize = const Size(50, 80);
+                          fixedLabel = [false,false];
+                          break;
+                        default:
+                      }
+
+                      sizeController[0].text = labelSize.width.toString();
+                      sizeController[1].text = labelSize.height.toString();
+                    });
+                  },
+                ),
+              ),
+            ),
+            Container(
               margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
               width: 320,
               height: 35,
@@ -175,7 +234,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   'Tape Size: ',
                 ),
                 Container(
@@ -184,6 +243,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   height: 35,
                   alignment: Alignment.center,
                   child: TextField(
+                    readOnly: fixedLabel[0],
                     keyboardType: TextInputType.number,
                     inputFormatters: <TextInputFormatter>[
                         FilteringTextInputFormatter.digitsOnly
@@ -220,6 +280,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   height: 35,
                   alignment: Alignment.center,
                   child: TextField(
+                    readOnly: fixedLabel[1],
                     keyboardType: TextInputType.number,
                     inputFormatters: <TextInputFormatter>[
                         FilteringTextInputFormatter.digitsOnly
