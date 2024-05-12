@@ -14,8 +14,6 @@ enum PhomemoPrinter { p12pro, d30, d35, m220 }
 /// 256 is the largest value. Other values are 8,16,32,128
 /// 
 /// [send] is the function from the ble package you are using to send the information
-/// 
-/// [read] is the function that gets info from the printer
 class Phomemo {
   Phomemo({
     required this.send, 
