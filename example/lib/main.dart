@@ -1,6 +1,4 @@
-import 'dart:typed_data';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -58,7 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     bluetooth = Bluetooth(
       onUpdate: _bleUpdate,
-      names: ['P12Pro','D35','D30','Q--------------'] /// 'Q--------------' Place the name of the m220 here. This is displayed on the front of the printer.
+      names: ['P12Pro','D35','D30','Q155E2AQ1100400'] /// 'Q--------------' Place the name of the m220 here. This is displayed on the front of the printer.
     );
 
     for(final printer in PhomemoPrinter.values){
@@ -152,8 +150,6 @@ class _MyHomePageState extends State<MyHomePage> {
       case PhomemoPrinter.d30:
       case PhomemoPrinter.p12pro:
         child =  Container(
-          width: (labelSize.width * 3),
-          height: (labelSize.height * 3),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(5),
@@ -169,8 +165,6 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
       default:
         child = Container(
-          width: (labelSize.width * 3),
-          height: (labelSize.height * 3),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),

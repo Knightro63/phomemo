@@ -42,10 +42,13 @@ class Phomemo {
       bool rotate = true
     }
   ) async {
+    if (rotate) {
+      labelSize = Size(labelSize.height,labelSize.width);
+    }
     List<int> bits = [];
     for (int i = 0; i < src.length; i++) {
       if (src[i] != null) {
-        bits += PhomemoHelper().preprocessImage(src[i]!, rotate, labelSize);
+        bits += PhomemoHelper._preprocessImage(src[i]!, rotate, labelSize);
         if (spacing != null && PhomemoPrinter.m220 != printer) {
           bits += List.filled(spacing * labelSize.width.toInt(), 0x00);
         }
@@ -170,6 +173,18 @@ class PhomemoHelper {
     return _byteDataToImage(data);
   }
 
+  @Deprecated("Use generateImageFromText")
+  static Future<img.Image?> generateImage(
+    m.TextSpan text, {
+    required Size size,
+    int padding = 0
+  }) async {
+    return generateImageFromText(
+      text,
+      size: size,
+      padding:padding
+    );
+  }
   /// Generate Image from Text in the corrected lable size format.
   static Future<img.Image?> generateImageFromText(
     m.TextSpan text, {
@@ -182,7 +197,7 @@ class PhomemoHelper {
         textDirection: TextDirection.ltr)
       ..layout(
           minWidth: 0,
-          maxWidth: double.infinity); //maxWidth: size.width - 12.0 - 12.0
+          maxWidth: double.infinity);
 
     final PictureRecorder recorder = PictureRecorder();
     Canvas newCanvas = Canvas(recorder);
@@ -218,60 +233,28 @@ class PhomemoHelper {
     return _byteDataToImage(data);
   }
 
-
-
   /// Process the image to a readable format for the printer
-  List<int> preprocessImage(img.Image src, bool rotate, Size labelSize) {
-    img.Image resized = src;
-    int newWidth = (labelSize.width * 8).toInt();
-    if (rotate) {
-      resized = img.copyResize(resized, height: newWidth);
-      resized = img.copyRotate(resized, angle: 90);
-    } else {
-      resized = img.copyResize(resized, width: newWidth);
-    }
+  static List<int> _preprocessImage(img.Image src, bool rotate, Size labelSize) {
+    late img.Image resized = src;
 
-    return _toRasterFormat(resized);
+    if (rotate) {
+      resized = img.copyRotate(resized, angle: 90);
+    } 
+    
+    resized = img.copyResize(resized, width: (labelSize.width*8).toInt());
+    img.grayscale(resized);
+    img.invert(resized);
+    resized = resized.convert(format:img.Format.uint8 ,numChannels: 1);
+
+    // Pack bits into bytes
+    return _packBitsIntoBytes(resized.getBytes());
   }
 
   static img.Image? _byteDataToImage(ByteData? data){
     if (data != null) {
       return img.decodePng(Uint8List.view(data.buffer));
     }
-
     return null;
-  }
-
-  /// Image rasterization
-  static List<int> _toRasterFormat(img.Image imgSrc) {
-    img.Image image = img.Image.from(imgSrc); // make a copy
-    final int widthPx = image.width;
-    final int heightPx = image.height;
-
-    img.grayscale(image);
-    img.invert(image);
-    image = image.convert(format:img.Format.uint8,numChannels: 4);
-
-    // R/G/B channels are same -> keep only one channel
-    final List<int> oneChannelBytes = [];
-    final List<int> buffer = image.getBytes();//image.getBytes(format: img.Format.rgba);
-    for (int i = 0; i < buffer.length; i += 4) {
-      oneChannelBytes.add(buffer[i]);
-    }
-    int pxPerLine = 8;
-    // Add some empty pixels at the end of each line (to make the width divisible by 8)
-    if (widthPx % pxPerLine != 0) {
-      final targetWidth = (widthPx + pxPerLine) - (widthPx % pxPerLine);
-      final missingPx = targetWidth - widthPx;
-      final extra = Uint8List(missingPx);
-      for (int i = 0; i < heightPx; i++) {
-        final pos = (i * widthPx + widthPx) + i * missingPx;
-        oneChannelBytes.insertAll(pos, extra);
-      }
-    }
-
-    // Pack bits into bytes
-    return _packBitsIntoBytes(oneChannelBytes);
   }
 
   /// Merges each 8 values (bits) into one byte
