@@ -56,7 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     bluetooth = Bluetooth(
       onUpdate: _bleUpdate,
-      names: ['P12Pro','D35','D30','Q155E2AQ1100400'] /// 'Q--------------' Place the name of the m220 here. This is displayed on the front of the printer.
+      names: ['P12Pro','D35','D30','Q155E2AQ1100400'] /// 'Q--------------' Place the name of the m-type (m110,m120,m220) printer here. This is displayed on the front of the printer.
     );
 
     for(final printer in PhomemoPrinter.values){
@@ -121,7 +121,7 @@ class _MyHomePageState extends State<MyHomePage> {
       printer: printer,
       spacing: 5,
       labelSize: labelSize,
-      rotate: printer != PhomemoPrinter.m220 // do not rotate the image if using the m220 or m110
+      rotate: !PhomemoPrinter.isMType(printer) // do not rotate the image if using the m-type printer
     ).then((value){
       printing = false;
     });
@@ -257,6 +257,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               labelSize = const Size(double.infinity, 12);
                               fixedLabel = [false,true];
                               break;
+                            case PhomemoPrinter.m110:
+                            case PhomemoPrinter.m120:
                             case PhomemoPrinter.m220:
                               labelSize = const Size(50, 80);
                               fixedLabel = [false,false];

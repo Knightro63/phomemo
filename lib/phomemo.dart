@@ -8,7 +8,14 @@ import 'package:flutter/widgets.dart' hide Image;
 import 'package:image/image.dart' as img;
 
 /// Phomemo printes that have been tested and are supported
-enum PhomemoPrinter { p12pro, d30, d35, m220 }
+enum PhomemoPrinter { p12pro, d30, d35, m110, m120 ,m220, m02;
+  static bool isMType(PhomemoPrinter printer){
+    return printer == m120 || printer == m110 || printer == m220;
+  }
+  static bool isDType(PhomemoPrinter printer){
+    return printer == d30 || printer == d35;
+  }
+}
 
 /// [packetSize] the max size of the information you wish to send to the printer 
 /// 256 is the largest value. Other values are 8,16,32,128
@@ -55,7 +62,7 @@ class Phomemo {
       }
     }
     if (bits.isEmpty) return;
-    await header(labelSize.width.toInt(), bits.length ~/ labelSize.width);
+    await header(labelSize.width.toInt(), bits.length ~/ labelSize.width, printer);
     for (int i = 0; i < bits.length / packetSize; i++) {
       if (i * packetSize + packetSize < bits.length) {
         await send(bits.sublist(i * packetSize, i * packetSize + packetSize));
@@ -64,25 +71,80 @@ class Phomemo {
         await send(bits.sublist(i * packetSize, bits.length));
       }
     }
-    int end = PhomemoPrinter.p12pro == printer ? 0x0E : 0x00;
-    await send([0x1b, 0x64, end]);
+    await footer(printer);
   }
 
   /// The start information for the printer
-  Future<void> header(int width, int bytes) async {
-    List<int> start = [
-      0x1b,
-      0x40,
-      0x1d,
-      0x76,
-      0x30,
-      0x00,
+  Future<void> header(int width, int bytes, PhomemoPrinter printer) async {
+    List<int> start = [];
+    if(printer == PhomemoPrinter.p12pro || PhomemoPrinter.isDType(printer)){
+      start = [
+        0x1b,
+        0x40,
+      ];
+    }
+    else if(PhomemoPrinter.isMType(printer)){
+      start = [
+        0x1b,0x4e, 0x0d, // Print Speed
+        0x05, // 0x01 (Slow) - 0x05(Fast) 
+        0x1b,0x4e, 0x0d, // Print density
+        0x0f, // range: 01 - 0f
+        0x1f,0x11, // Media Type
+        0x0a, //Mode: 0a="Label With Gaps" 0b="Continuas" 26="Label With Marks"
+      ];
+    }
+    else if(printer == PhomemoPrinter.m02){
+      start = [
+        0x1b, 0x40, // command ESC @: initialize printer
+        0x1b, 0x61, // command ESC a: select justification
+        0x01, // range: 0 (left-justification), 1 centered,2 (right justification)
+        0x1f, 0x11, 0x02, 0x04
+      ];
+    }
+    await send(start+marker(width, bytes));
+  }
+
+  /// The start information for the printer
+  List<int> marker(int width, int bytes) {
+    List<int> marker = [
+      0x1d,0x76,0x30, // command GS v 0 : print raster bit image
+      0x00, //mode: 0 (normal), 1 (double width),2 (double-height), 3 (quadruple)
       width % 256,
       width ~/ 256,
       bytes % 256,
       bytes ~/ 256
     ];
-    await send(start);
+
+    return marker;
+  }
+
+  /// The start information for the printer
+  Future<void> footer(PhomemoPrinter printer) async {
+    if(PhomemoPrinter.isDType(printer)){
+      await send([0x1b, 0x64, 0x00]);
+    }
+    else if(PhomemoPrinter.p12pro == printer){
+      await send([0x1b, 0x64, 0x0E]);
+    }
+    else if(PhomemoPrinter.isMType(printer)){
+      List<int> end = [
+        0x1f,0xf0,0x05,0x00,
+        0x1f,0xf0,0x03,0x00,
+      ];
+      await send(end);
+    }
+    else if(printer == PhomemoPrinter.m02){
+      List<int> end = [
+        0x1b,0x64,0x02,
+        0x1b,0x64,0x02,
+
+        0x1f,0x11,0x08,
+        0x1f,0x11,0x0E,
+        0x1f,0x11,0x07,
+        0x1f,0x11,0x09,
+      ];
+      await send(end);
+    }
   }
 }
 
