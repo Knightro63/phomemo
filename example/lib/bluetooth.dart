@@ -186,6 +186,7 @@ class Bluetooth {
     for(final char in characteristic!){
       if (char.properties.notify) {
         if (!isStreaming) {
+          char.setNotifyValue(true);
           stream = char.lastValueStream.listen((value) {
             print(value);
           });
@@ -210,11 +211,10 @@ class Bluetooth {
   Future<void> write(List<int> data) async{
     BluetoothCharacteristic? toSend; 
     for(final char in characteristic!){
-      
       if (char.properties.write) {
         toSend = char;
       }
     }
-    await toSend?.write(data);
+    await toSend?.write(data,allowLongWrite: true);
   }
 }

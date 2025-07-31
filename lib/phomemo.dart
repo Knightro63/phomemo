@@ -12,6 +12,9 @@ enum PhomemoPrinter { p12pro, d30, d35, m110, m120 ,m220, m02;
   static bool isMType(PhomemoPrinter printer){
     return printer == m120 || printer == m110 || printer == m220;
   }
+  static bool isM1Type(PhomemoPrinter printer){
+    return printer == m120 || printer == m110;
+  }
   static bool isDType(PhomemoPrinter printer){
     return printer == d30 || printer == d35;
   }
@@ -29,6 +32,33 @@ class Phomemo {
 
   Future<void> Function(List<int>) send;
   int packetSize;
+
+  static List<int>? labelData(
+    List<img.Image?> src,
+    {required PhomemoPrinter printer,
+      Size labelSize = const Size(12, double.infinity),
+      int? spacing,
+      bool rotate = true
+    }
+  ){
+    if (rotate) {
+      labelSize = Size(labelSize.height,labelSize.width);
+    }
+    List<int> bits = [];
+    for (int i = 0; i < src.length; i++) {
+      if (src[i] != null) {
+        bits += PhomemoHelper._preprocessImage(src[i]!, rotate, labelSize);
+        if (spacing != null && !PhomemoPrinter.isMType(printer)) {
+          bits += List.filled(spacing * labelSize.width.toInt(), 0x00);
+        }
+      }
+    }
+    if (bits.isEmpty) null;
+    return header(printer)+ 
+      marker(labelSize.width.toInt(), bits.length ~/ labelSize.width)+
+      bits+
+      footer(printer);
+  }
 
   /// sends the packts to the label maker
   /// 
@@ -56,41 +86,39 @@ class Phomemo {
     for (int i = 0; i < src.length; i++) {
       if (src[i] != null) {
         bits += PhomemoHelper._preprocessImage(src[i]!, rotate, labelSize);
-        if (spacing != null && PhomemoPrinter.m220 != printer) {
+        if (spacing != null && !PhomemoPrinter.isMType(printer)) {
           bits += List.filled(spacing * labelSize.width.toInt(), 0x00);
         }
       }
     }
     if (bits.isEmpty) return;
-    await header(labelSize.width.toInt(), bits.length ~/ labelSize.width, printer);
+    await send(header(printer));
+    await send(marker(labelSize.width.toInt(), bits.length ~/ labelSize.width));
     for (int i = 0; i < bits.length / packetSize; i++) {
       if (i * packetSize + packetSize < bits.length) {
-        await send(bits.sublist(i * packetSize, i * packetSize + packetSize));
+        send(bits.sublist(i * packetSize, i * packetSize + packetSize));
       } 
       else {
-        await send(bits.sublist(i * packetSize, bits.length));
+        send(bits.sublist(i * packetSize, bits.length));
       }
     }
-    await footer(printer);
+    await send(footer(printer));
   }
 
   /// The start information for the printer
-  Future<void> header(int width, int bytes, PhomemoPrinter printer) async {
+  static List<int> header(PhomemoPrinter printer) {
     List<int> start = [];
     if(printer == PhomemoPrinter.p12pro || PhomemoPrinter.isDType(printer)){
-      start = [
-        0x1b,
-        0x40,
-      ];
+      start = [0x1b,0x40];
     }
     else if(PhomemoPrinter.isMType(printer)){
       start = [
-        0x1b,0x4e, 0x0d, // Print Speed
+        0x1b,0x4e,0x0d, // Print Speed
         0x05, // 0x01 (Slow) - 0x05(Fast) 
-        0x1b,0x4e, 0x0d, // Print density
+        0x1b,0x4e,0x04, // Print density
         0x0f, // range: 01 - 0f
         0x1f,0x11, // Media Type
-        0x0a, //Mode: 0a="Label With Gaps" 0b="Continuas" 26="Label With Marks"
+        0x0a, //Mode: 0a="Label With Gaps" 0b="Continous" 26="Label With Marks"
       ];
     }
     else if(printer == PhomemoPrinter.m02){
@@ -101,40 +129,37 @@ class Phomemo {
         0x1f, 0x11, 0x02, 0x04
       ];
     }
-    await send(start+marker(width, bytes));
+    return start;
   }
 
   /// The start information for the printer
-  List<int> marker(int width, int bytes) {
-    List<int> marker = [
+  static List<int> marker(int width, int bytes) {
+    return [
       0x1d,0x76,0x30, // command GS v 0 : print raster bit image
       0x00, //mode: 0 (normal), 1 (double width),2 (double-height), 3 (quadruple)
-      width % 256,
-      width ~/ 256,
-      bytes % 256,
-      bytes ~/ 256
+      width & 0xff,
+      width >> 8,
+      bytes & 0xff,
+      bytes >> 8,    
     ];
-
-    return marker;
   }
 
   /// The start information for the printer
-  Future<void> footer(PhomemoPrinter printer) async {
+  static List<int> footer(PhomemoPrinter printer){
     if(PhomemoPrinter.isDType(printer)){
-      await send([0x1b, 0x64, 0x00]);
+      return [0x1b, 0x64, 0x00];
     }
     else if(PhomemoPrinter.p12pro == printer){
-      await send([0x1b, 0x64, 0x0E]);
+      return [0x1b, 0x64, 0x0E];
     }
     else if(PhomemoPrinter.isMType(printer)){
-      List<int> end = [
+      return [
         0x1f,0xf0,0x05,0x00,
         0x1f,0xf0,0x03,0x00,
       ];
-      await send(end);
     }
     else if(printer == PhomemoPrinter.m02){
-      List<int> end = [
+      return [
         0x1b,0x64,0x02,
         0x1b,0x64,0x02,
 
@@ -143,8 +168,8 @@ class Phomemo {
         0x1f,0x11,0x07,
         0x1f,0x11,0x09,
       ];
-      await send(end);
     }
+    throw('Printer type not accepted.');
   }
 }
 

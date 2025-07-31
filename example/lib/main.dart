@@ -56,7 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     bluetooth = Bluetooth(
       onUpdate: _bleUpdate,
-      names: ['P12Pro','D35','D30','Q155E2AQ1100400'] /// 'Q--------------' Place the name of the m-type (m110,m120,m220) printer here. This is displayed on the front of the printer.
+      names: ['P12Pro','D35','D30','Q155E2AQ1100400','Q199C0888888888','966df9e978cd'] /// 'Q--------------' Place the name of the m-type (m110,m120,m220) printer here. This is displayed on the front of the printer.
     );
 
     for(final printer in PhomemoPrinter.values){
@@ -106,7 +106,10 @@ class _MyHomePageState extends State<MyHomePage> {
     size ??= const Size(double.infinity,12);
     if(printing) return;
     printing = true;
-    Phomemo label = Phomemo(send: bluetooth.write);
+    Phomemo label = Phomemo(
+      send: bluetooth.write,
+      packetSize: 512
+    );
     PhomemoPrinter printer = PhomemoHelper.getPrinterFromName(bluetooth.device!.platformName);
     img.Image? letter;
     if(showType == 'Custom'){
@@ -178,16 +181,16 @@ class _MyHomePageState extends State<MyHomePage> {
               borderRadius: BorderRadius.circular(5),
               border: Border.all(color: Colors.black,width: 2)
             ),
-            child: const Column(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.add_photo_alternate_outlined),
+                const Icon(Icons.add_photo_alternate_outlined),
                 SizedBox(
-                  height: 20,
+                  height: PhomemoPrinter.isMType(printer)?10:20,
                 ),
                 Text(
-                  'This is an Example of the printer printing!',
+                  PhomemoPrinter.isMType(printer)?'Example!':'This is an Example of the printer printing!',
                   textAlign: TextAlign.center,
                 )
               ],
@@ -258,6 +261,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               fixedLabel = [false,true];
                               break;
                             case PhomemoPrinter.m110:
+                              labelSize = const Size(40,30);
+                              fixedLabel = [false,false];
+                              break;
                             case PhomemoPrinter.m120:
                             case PhomemoPrinter.m220:
                               labelSize = const Size(50, 80);
@@ -453,6 +459,9 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: () async{
           if(bluetooth.deviceConnected()){
             labelSize = Size(sizeController[0].text != ''?double.parse(sizeController[0].text):double.infinity, sizeController[1].text != ''?double.parse(sizeController[1].text):12);
+            if(!bluetooth.isStreaming && PhomemoPrinter.isM1Type(printer)){
+              bluetooth.setNotification();
+            }
             printPhomemo(
               name: textController.text,
               size: labelSize

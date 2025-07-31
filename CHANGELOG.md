@@ -1,7 +1,10 @@
+## 0.1.1
+
+* Fixed M1X type printer spacing
+
 ## 0.1.0
 
 * Added m110, m120, and m02 support
-
 
 ## 0.0.2
 

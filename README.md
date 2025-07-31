@@ -74,4 +74,4 @@ In case of trivial fixes open a [pull request](https://github.com/Knightro63/pho
 
 ## Additional Information
 
-This plugin is only for creating the information to send to phomemo printers. This has been tested on P12Pro, D35, D30 and M220.
+This plugin is only for creating the information to send to phomemo printers. This has been tested on P12Pro, D35, D30, M10 and M220.
