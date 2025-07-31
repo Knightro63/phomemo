@@ -50,14 +50,14 @@ img.Image? text = await PhomemoHelper.generateImageFromText(
 Generate the data to send to the printer. Put the function to send to your printer in the class itself. In this case it is sending to a ble printer usng flutter_blue_plus.
 
 ```dart
-Phomemo label = Phomemo(send: bluetooth.write, read: bluetooth.read);
+Phomemo label = Phomemo(send: bluetooth.write);
 PhomemoPrinter printer = helper.getPrinterFromName(bluetooth.device!.name);
 
 await label.printLabel(
   [img.decodePng(qrCode!.buffer.asUint8List()),letter],// the images to send to the printer
   printer: printer, //The printer that will be printed on
   spacing: 5, //space between images. Only works for D30, and D35 printers
-  rotate: printer != PhomemoPrinter.m220 // do not rotate the image if using the m220 or m110
+  rotate: !PhomemoPrinter.isMType(printer) // do not rotate the image if using the m220 or m110
   labelSize: Size(double.infinity,12), //size of the label
 );
 ```
@@ -74,4 +74,4 @@ In case of trivial fixes open a [pull request](https://github.com/Knightro63/pho
 
 ## Additional Information
 
-This plugin is only for creating the information to send to phomemo printers. This has been tested on P12Pro, D35, D30, M10 and M220.
+This plugin is only for creating the information to send to phomemo printers. This has been tested on P12Pro, D35, D30, M110 and M220.

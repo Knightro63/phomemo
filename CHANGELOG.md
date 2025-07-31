@@ -1,3 +1,7 @@
+## 0.1.1
+
+* Added options for printing
+
 ## 0.1.0
 
 * Added m110, m120, and m02 support

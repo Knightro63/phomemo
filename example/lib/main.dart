@@ -108,9 +108,8 @@ class _MyHomePageState extends State<MyHomePage> {
     printing = true;
     Phomemo label = Phomemo(
       send: bluetooth.write,
-      packetSize: 512
+      packetSize: PhomemoPacketSize.p512,
     );
-    PhomemoPrinter printer = PhomemoHelper.getPrinterFromName(bluetooth.device!.platformName);
     img.Image? letter;
     if(showType == 'Custom'){
       letter = await textToImage(name,size);

@@ -8,7 +8,7 @@ import 'package:flutter/widgets.dart' hide Image;
 import 'package:image/image.dart' as img;
 
 /// Phomemo printes that have been tested and are supported
-enum PhomemoPrinter { p12pro, d30, d35, m110, m120 ,m220, m02;
+enum PhomemoPrinter{p12pro, d30, d35, m110, m120, m220, m02;
   static bool isMType(PhomemoPrinter printer){
     return printer == m120 || printer == m110 || printer == m220;
   }
@@ -20,20 +20,103 @@ enum PhomemoPrinter { p12pro, d30, d35, m110, m120 ,m220, m02;
   }
 }
 
+/// This is for the M type printers to change size of the image printed
+enum PhomemoSizeMode{normal,doubleWidth,doubleHeight,quadruple}
+
+/// Only used for M02
+enum PhomemoJustification{left,center,right}
+
+/// This is for the M type printers to change tpye of label
+enum PhomemoLabelType{gaps,continous,marks;
+  int get value => _value(); 
+  int _value(){
+    if(index == 2){
+      return 0x26;
+    }
+    else if(index == 1){
+      return 0x0b;
+    }
+    else{
+      return 0x0a;
+    }
+  }
+}
+
+enum PhomemoPacketSize{p8,p16,p32,p64,p128,p256,p512;
+  int get value => _value(); 
+  int _value(){
+    switch (index) {
+      case 0:
+        return 8;
+      case 1:
+        return 16;
+      case 2:
+        return 32;
+      case 3:
+        return 64;
+      case 4:
+        return 128;
+      case 5:
+        return 256;
+      default:
+        return 512;
+    }
+  }
+}
+
+/// Print perameters for the printer
+/// [sizeMode] the size of the image to print
+/// [justification] for m02 type for alignment
+/// [labelType] for the mType printers for the type of lable
+/// [speed] how fast to print 1 - 5 (slow - fast)
+/// [darkness] how dark to make the ink 1 - 10 (light - dark)
+class PhomemoOptions{
+  PhomemoSizeMode sizeMode;
+  PhomemoJustification justification;
+  PhomemoLabelType labelType;
+  int speed;
+  int darkness;
+
+  PhomemoOptions({
+    this.sizeMode = PhomemoSizeMode.normal,
+    this.justification = PhomemoJustification.center,
+    this.labelType = PhomemoLabelType.gaps,
+    this.speed = 5,
+    this.darkness = 10
+  }){
+    if(speed < 1){
+      speed = 1;
+    }
+    else if(speed > 5){
+      speed = 5;
+    }
+    if(darkness < 1){
+      darkness = 1;
+    }
+    else if(darkness > 10){
+      darkness = 10;
+    }
+  }
+}
+
 /// [packetSize] the max size of the information you wish to send to the printer 
-/// 256 is the largest value. Other values are 8,16,32,128
+/// 512 is the largest value. Other values are 8,16,32,128,256
 /// 
 /// [send] is the function from the ble package you are using to send the information
 class Phomemo {
   Phomemo({
     required this.send, 
-    this.packetSize = 128
-  });
+    this.packetSize = PhomemoPacketSize.p128,
+    PhomemoOptions? options
+  }){
+    this.options = options ?? PhomemoOptions();
+  }
 
   Future<void> Function(List<int>) send;
-  int packetSize;
+  PhomemoPacketSize packetSize;
+  late PhomemoOptions options;
 
-  static List<int>? labelData(
+  List<int>? labelData(
     List<img.Image?> src,
     {required PhomemoPrinter printer,
       Size labelSize = const Size(12, double.infinity),
@@ -54,8 +137,8 @@ class Phomemo {
       }
     }
     if (bits.isEmpty) null;
-    return header(printer)+ 
-      marker(labelSize.width.toInt(), bits.length ~/ labelSize.width)+
+    return header(printer, options)+ 
+      marker(labelSize.width.toInt(), bits.length ~/ labelSize.width, options.sizeMode)+
       bits+
       footer(printer);
   }
@@ -79,34 +162,21 @@ class Phomemo {
       bool rotate = true
     }
   ) async {
-    if (rotate) {
-      labelSize = Size(labelSize.height,labelSize.width);
-    }
-    List<int> bits = [];
-    for (int i = 0; i < src.length; i++) {
-      if (src[i] != null) {
-        bits += PhomemoHelper._preprocessImage(src[i]!, rotate, labelSize);
-        if (spacing != null && !PhomemoPrinter.isMType(printer)) {
-          bits += List.filled(spacing * labelSize.width.toInt(), 0x00);
+    final bits = labelData(src, printer: printer,labelSize: labelSize,spacing: spacing,rotate: rotate);
+    if(bits != null){
+      for (int i = 0; i < bits.length / packetSize.value; i++) {
+        if (i * packetSize.value + packetSize.value < bits.length) {
+          send(bits.sublist(i * packetSize.value, i * packetSize.value + packetSize.value));
+        } 
+        else {
+          send(bits.sublist(i * packetSize.value, bits.length));
         }
       }
     }
-    if (bits.isEmpty) return;
-    await send(header(printer));
-    await send(marker(labelSize.width.toInt(), bits.length ~/ labelSize.width));
-    for (int i = 0; i < bits.length / packetSize; i++) {
-      if (i * packetSize + packetSize < bits.length) {
-        send(bits.sublist(i * packetSize, i * packetSize + packetSize));
-      } 
-      else {
-        send(bits.sublist(i * packetSize, bits.length));
-      }
-    }
-    await send(footer(printer));
   }
 
   /// The start information for the printer
-  static List<int> header(PhomemoPrinter printer) {
+  static List<int> header(PhomemoPrinter printer, PhomemoOptions options) {
     List<int> start = [];
     if(printer == PhomemoPrinter.p12pro || PhomemoPrinter.isDType(printer)){
       start = [0x1b,0x40];
@@ -114,18 +184,18 @@ class Phomemo {
     else if(PhomemoPrinter.isMType(printer)){
       start = [
         0x1b,0x4e,0x0d, // Print Speed
-        0x05, // 0x01 (Slow) - 0x05(Fast) 
+        options.speed,//0x05, // 0x01 (Slow) - 0x05(Fast) 
         0x1b,0x4e,0x04, // Print density
-        0x0f, // range: 01 - 0f
+        options.darkness,//0x0f, // range: 01 - 0f
         0x1f,0x11, // Media Type
-        0x0a, //Mode: 0a="Label With Gaps" 0b="Continous" 26="Label With Marks"
+        options.labelType.value, //Mode: 0a="Label With Gaps" 0b="Continous" 26="Label With Marks"
       ];
     }
     else if(printer == PhomemoPrinter.m02){
       start = [
         0x1b, 0x40, // command ESC @: initialize printer
         0x1b, 0x61, // command ESC a: select justification
-        0x01, // range: 0 (left-justification), 1 centered,2 (right justification)
+        options.justification.index, // range: 0 (left-justification), 1 centered, 2 (right justification)
         0x1f, 0x11, 0x02, 0x04
       ];
     }
@@ -133,10 +203,10 @@ class Phomemo {
   }
 
   /// The start information for the printer
-  static List<int> marker(int width, int bytes) {
+  static List<int> marker(int width, int bytes, PhomemoSizeMode sizeMode) {
     return [
       0x1d,0x76,0x30, // command GS v 0 : print raster bit image
-      0x00, //mode: 0 (normal), 1 (double width),2 (double-height), 3 (quadruple)
+      sizeMode.index, //mode: 0 (normal), 1 (double width),2 (double-height), 3 (quadruple)
       width & 0xff,
       width >> 8,
       bytes & 0xff,
